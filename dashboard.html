@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WildTrack — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-inner">
+    <div class="loader-title" style="font-size:40px;letter-spacing:2px;margin-bottom:8px;font-family:'EB Garamond',serif;font-weight:700">
+      WILD<span style="color:var(--neon-green)">TRACK</span>
+    </div>
+    <div class="loader-sub">Global Animal Intelligence Platform v2</div>
+    <div class="loader-bar"><div class="loader-fill" id="loader-fill"></div></div>
+    <div class="loader-status" id="loader-status">Initializing telemetry systems...</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+
+  <!-- TOP BAR -->
+  <header id="topbar">
+    <div class="tb-left">
+      <div class="tb-logo">
+        <div class="tb-logo-icon" style="width:28px;height:28px;background:#000;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:10px;font-weight:900;color:white">WT</div>
+        <div>
+          <div class="tb-logo-name">WILD<span>TRACK</span></div>
+          <div class="tb-logo-sub">Animal Intelligence Platform</div>
+        </div>
+      </div>
+      <a href="index.html" style="margin-left:14px;font-size:9px;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:1.5px;text-decoration:none;padding:5px 11px;border:1px solid var(--border);border-radius:6px;transition:all .2s;white-space:nowrap" onmouseover="this.style.borderColor='var(--neon-green)';this.style.color='var(--neon-green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">&#8592; HOME</a>
+    </div>
+    <div class="tb-center">
+      <div class="tb-stat"><div class="ts-val" id="ts-animals">0</div><div class="ts-lbl">Animals</div></div>
+      <div class="tb-divider"></div>
+      <div class="tb-stat"><div class="ts-val" id="ts-species">0</div><div class="ts-lbl">Species</div></div>
+      <div class="tb-divider"></div>
+      <div class="tb-stat"><div class="ts-val" id="ts-points">0</div><div class="ts-lbl">GPS Points</div></div>
+      <div class="tb-divider"></div>
+      <div class="tb-stat"><div class="ts-val" id="ts-continents">0</div><div class="ts-lbl">Continents</div></div>
+    </div>
+    <div class="tb-right">
+      <div class="api-status" id="api-status">
+        <div class="api-dot"></div>
+        <span id="api-status-text">LIVE TRACKING</span>
+      </div>
+      <button class="tb-logout" onclick="logout()" title="Reload" style="font-size:16px">&#8635;</button>
+    </div>
+  </header>
+
+  <div id="main">
+
+    <!-- LEFT PANEL -->
+    <aside id="left-panel">
+      <div class="panel-header">
+        <div class="ph-title">ANIMALS</div>
+      </div>
+      <div class="search-wrap">
+        <input type="text" id="search" placeholder="Search name or species..." oninput="filterAnimals()">
+      </div>
+      <div class="filter-row" id="continent-filters"></div>
+      <div id="animal-list"></div>
+      <div class="panel-footer">
+        <button class="refresh-btn" onclick="refreshData()">
+          <span id="refresh-icon">&#8635;</span>&nbsp;REFRESH DATA
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAP -->
+    <div id="map-wrap">
+      <div id="map"></div>
+
+      <div class="map-controls">
+        <button class="mc-btn active" id="mc-tracks"    onclick="toggleLayer('tracks')"  title="GPS Tracks" style="font-size:13px;font-family:'DM Mono',monospace;font-weight:700;color:var(--neon-green)">GPS</button>
+        <button class="mc-btn"        id="mc-predict"   onclick="toggleLayer('predict')" title="AI Prediction" style="font-size:11px;font-family:'DM Mono',monospace;font-weight:700">AI</button>
+        <button class="mc-btn"        id="mc-satellite" onclick="toggleSatellite()"       title="Topo View" style="font-size:11px;font-family:'DM Mono',monospace;font-weight:700">MAP</button>
+        <button class="mc-btn"        onclick="fitAll()"                                  title="Fit All" style="font-size:14px">&#9678;</button>
+        <button class="mc-btn"        onclick="animateAll()" id="mc-animate"              title="Animate" style="font-size:14px">&#9654;</button>
+      </div>
+
+
+
+      <div class="map-legend">
+        <div class="ml-title">LEGEND</div>
+        <div class="ml-row"><div class="ml-line solid"></div><span>GPS Track</span></div>
+        <div class="ml-row"><div class="ml-line dashed"></div><span>AI Prediction</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#8b1a1a"></div><span>Hunting</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#2d6a4f"></div><span>Walking</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#40916c"></div><span>Feeding</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#888888"></div><span>Resting</span></div>
+      </div>
+
+      <div id="map-loading" class="map-loading" style="display:none">
+        <div class="ml-spinner" style="width:36px;height:36px;border:1.5px solid rgba(0,0,0,0.08);border-top-color:#000;border-radius:50%;animation:spin 1s linear infinite"></div>
+        <div class="ml-text">Loading GPS data...</div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <aside id="right-panel">
+      <div id="detail-content">
+        <div class="no-select">
+          <div class="ns-globe" style="width:52px;height:52px;background:rgba(0,0,0,0.05);border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:18px;font-weight:900;color:rgba(0,0,0,0.3)">WT</div>
+          <div class="ns-title">SELECT AN ANIMAL</div>
+          <div class="ns-sub">Click any animal card or map marker to view GPS analytics and AI movement predictions</div>
+          <div class="ns-hint">
+            <div class="hint-row">&#10022; Real-time GPS tracking</div>
+            <div class="hint-row">&#9670; 4-method AI prediction</div>
+            <div class="hint-row">&#9676; Circadian behaviour model</div>
+            <div class="hint-row">&#10022; Kalman filter uncertainty</div>
+            <div class="hint-row">&#9671; Territory return algorithm</div>
+            <div class="hint-row">&#10022; 8 continents — 80 animals</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/api.js"></script>
+<script src="js/map.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/prediction.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
